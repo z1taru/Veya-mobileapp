@@ -26,6 +26,15 @@ After changing Drift tables, run:
 flutter pub run build_runner build
 ```
 
+## Current data sources
+
+- Authentication and family membership use the Veya REST API.
+- Tasks are offline-first and currently live in Drift. The repository boundary
+  is ready to receive a remote sync implementation when the target endpoints
+  become available.
+- Pull-to-refresh updates the family cache; task mutations update the reactive
+  local list immediately.
+
 ## Firebase
 
 Firebase packages and the bootstrap boundary are present, but initialization is

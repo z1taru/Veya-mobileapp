@@ -8,6 +8,9 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/household/presentation/family_screen.dart';
+import '../../features/household/presentation/invite_member_screen.dart';
+import '../../features/tasks/presentation/task_editor_screen.dart';
 import 'app_routes.dart';
 import 'deep_link_coordinator.dart';
 
@@ -41,6 +44,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.home,
         builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.family,
+        builder: (context, state) => const FamilyScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.familyInvite,
+        builder: (context, state) => const InviteMemberScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.taskNew,
+        builder: (context, state) => const TaskEditorScreen(),
+      ),
+      GoRoute(
+        path: '/tasks/:taskId/edit',
+        builder: (context, state) =>
+            TaskEditorScreen(taskId: state.pathParameters['taskId']),
       ),
     ],
     redirect: (context, routerState) {

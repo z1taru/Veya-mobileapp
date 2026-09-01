@@ -49,19 +49,45 @@ class FamilyMemberRecords extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [UserRecords, FamilyRecords, FamilyMemberRecords])
+@DataClassName('TaskRow')
+class TaskRecords extends Table {
+  TextColumn get id => text()();
+  TextColumn get familyId => text()();
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get createdById => text()();
+  TextColumn get assigneeId => text().nullable()();
+  TextColumn get status => text()();
+  DateTimeColumn get deadline => dateTime().nullable()();
+  TextColumn get priority => text()();
+  TextColumn get category => text().nullable()();
+  TextColumn get recurrenceRuleJson => text().nullable()();
+  DateTimeColumn get completedAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  IntColumn get version => integer().withDefault(const Constant(0))();
+  TextColumn get syncStatus => text().withDefault(const Constant('LOCAL'))();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DriftDatabase(
+  tables: [UserRecords, FamilyRecords, FamilyMemberRecords, TaskRecords],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'veya'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
     onUpgrade: (migrator, from, to) async {
-      // Add explicit, sequential migrations as schemaVersion increases.
+      if (from < 2) await migrator.createTable(taskRecords);
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -76,6 +102,61 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertFamilyMember(FamilyMemberRecordsCompanion member) =>
       into(familyMemberRecords).insertOnConflictUpdate(member);
+
+  Future<FamilyRow?> getCurrentFamily() =>
+      (select(familyRecords)
+            ..orderBy([(row) => OrderingTerm.desc(row.updatedAt)])
+            ..limit(1))
+          .getSingleOrNull();
+
+  Stream<FamilyRow?> watchCurrentFamily() =>
+      (select(familyRecords)
+            ..orderBy([(row) => OrderingTerm.desc(row.updatedAt)])
+            ..limit(1))
+          .watchSingleOrNull();
+
+  Stream<List<FamilyMemberRow>> watchFamilyMembers(String familyId) =>
+      (select(familyMemberRecords)
+            ..where((row) => row.familyId.equals(familyId))
+            ..orderBy([(row) => OrderingTerm.asc(row.fullName)]))
+          .watch();
+
+  Future<void> replaceFamilyMembers(
+    String familyId,
+    List<FamilyMemberRecordsCompanion> members,
+  ) => transaction(() async {
+    await (delete(
+      familyMemberRecords,
+    )..where((row) => row.familyId.equals(familyId))).go();
+    await batch((batch) => batch.insertAll(familyMemberRecords, members));
+  });
+
+  Stream<List<TaskRow>> watchTaskRows(String familyId) =>
+      (select(taskRecords)
+            ..where(
+              (row) => row.familyId.equals(familyId) & row.deletedAt.isNull(),
+            )
+            ..orderBy([
+              (row) => OrderingTerm.asc(row.deadline),
+              (row) => OrderingTerm.desc(row.createdAt),
+            ]))
+          .watch();
+
+  Future<TaskRow?> getTaskRow(String id) => (select(
+    taskRecords,
+  )..where((row) => row.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertTask(TaskRecordsCompanion task) =>
+      into(taskRecords).insertOnConflictUpdate(task);
+
+  Future<void> markTaskDeleted(String id) =>
+      (update(taskRecords)..where((row) => row.id.equals(id))).write(
+        TaskRecordsCompanion(
+          deletedAt: Value(DateTime.now().toUtc()),
+          updatedAt: Value(DateTime.now().toUtc()),
+          syncStatus: const Value('LOCAL'),
+        ),
+      );
 
   Future<UserRow?> getLastUser() =>
       (select(userRecords)

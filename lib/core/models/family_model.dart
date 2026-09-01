@@ -1,12 +1,23 @@
 enum FamilyRole {
   owner,
+  parent,
   member,
   unknown;
 
   factory FamilyRole.fromJson(String? value) => switch (value) {
     'OWNER' => FamilyRole.owner,
+    'PARENT' => FamilyRole.parent,
     'MEMBER' => FamilyRole.member,
     _ => FamilyRole.unknown,
+  };
+}
+
+extension FamilyRoleLabel on FamilyRole {
+  String get label => switch (this) {
+    FamilyRole.owner => 'Владелец',
+    FamilyRole.parent => 'Родитель',
+    FamilyRole.member => 'Участник',
+    FamilyRole.unknown => 'Участник',
   };
 }
 
