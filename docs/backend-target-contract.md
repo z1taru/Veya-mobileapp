@@ -107,6 +107,12 @@ TaskDetailsDto {
 }
 ```
 
+The mobile client additionally stores `localPath`, `uploadStatus`, and
+`uploadError` as local-only queue metadata. These fields are not part of
+`AttachmentDto`. When the multipart endpoint becomes available, a background
+uploader will translate a queued local record into the server DTO without
+changing the repository or UI contracts.
+
 Recurrence validation:
 
 - `WEEKLY` requires non-empty `weekdays` (ISO 1..7).

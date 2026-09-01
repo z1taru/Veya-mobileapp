@@ -2,15 +2,24 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../activity/domain/activity_models.dart';
+import '../../activity/domain/activity_repository.dart';
 import '../domain/task_models.dart';
 import '../domain/task_repository.dart';
 import 'task_mapper.dart';
 
 final class LocalTaskRepository implements TaskRepository {
-  const LocalTaskRepository(this._database, this._uuid);
+  const LocalTaskRepository(
+    this._database,
+    this._uuid, [
+    this._activity,
+    this._currentUserId,
+  ]);
 
   final AppDatabase _database;
   final Uuid _uuid;
+  final ActivityRepository? _activity;
+  final String? _currentUserId;
 
   @override
   Stream<List<TaskModel>> watchTasks({
@@ -92,6 +101,13 @@ final class LocalTaskRepository implements TaskRepository {
         updatedAt: now,
       ),
     );
+    await _record(
+      familyId: familyId,
+      actorId: createdById,
+      type: ActivityEventType.taskCreated,
+      entityId: id,
+      payload: {'title': draft.title.trim()},
+    );
     return (await _database.getTaskRow(id))!.toModel();
   }
 
@@ -112,11 +128,19 @@ final class LocalTaskRepository implements TaskRepository {
         version: existing.version,
       ),
     );
+    await _record(
+      familyId: existing.familyId,
+      actorId: _currentUserId ?? existing.createdById,
+      type: ActivityEventType.taskUpdated,
+      entityId: id,
+      payload: {'title': draft.title.trim()},
+    );
     return (await _database.getTaskRow(id))!.toModel();
   }
 
   @override
   Future<void> updateStatus(String id, TaskStatus status) async {
+    final existing = await _requiredTask(id);
     final completedAt = status == TaskStatus.done
         ? DateTime.now().toUtc()
         : null;
@@ -130,19 +154,35 @@ final class LocalTaskRepository implements TaskRepository {
         syncStatus: const Value('LOCAL'),
       ),
     );
+    await _record(
+      familyId: existing.familyId,
+      actorId: _currentUserId ?? existing.createdById,
+      type: ActivityEventType.taskStatusChanged,
+      entityId: id,
+      payload: {'title': existing.title, 'status': status.wireName},
+    );
   }
 
   @override
-  Future<void> assignTask(String id, String? userId) =>
-      (_database.update(
-        _database.taskRecords,
-      )..where((row) => row.id.equals(id))).write(
-        TaskRecordsCompanion(
-          assigneeId: Value(userId),
-          updatedAt: Value(DateTime.now().toUtc()),
-          syncStatus: const Value('LOCAL'),
-        ),
-      );
+  Future<void> assignTask(String id, String? userId) async {
+    final existing = await _requiredTask(id);
+    await (_database.update(
+      _database.taskRecords,
+    )..where((row) => row.id.equals(id))).write(
+      TaskRecordsCompanion(
+        assigneeId: Value(userId),
+        updatedAt: Value(DateTime.now().toUtc()),
+        syncStatus: const Value('LOCAL'),
+      ),
+    );
+    await _record(
+      familyId: existing.familyId,
+      actorId: _currentUserId ?? existing.createdById,
+      type: ActivityEventType.taskAssigned,
+      entityId: id,
+      payload: {'title': existing.title, 'assigneeId': userId},
+    );
+  }
 
   @override
   Future<void> assignToSelf(String id, String currentUserId) =>
@@ -160,5 +200,22 @@ final class LocalTaskRepository implements TaskRepository {
   void _validate(TaskDraft draft) {
     final errors = draft.validate();
     if (errors.isNotEmpty) throw ArgumentError(errors.first);
+  }
+
+  Future<void> _record({
+    required String familyId,
+    required String? actorId,
+    required ActivityEventType type,
+    required String entityId,
+    required Map<String, dynamic> payload,
+  }) async {
+    await _activity?.record(
+      familyId: familyId,
+      actorId: actorId,
+      type: type,
+      entityType: ActivityEntityType.task,
+      entityId: entityId,
+      payload: payload,
+    );
   }
 }

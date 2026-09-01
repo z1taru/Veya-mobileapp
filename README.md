@@ -29,11 +29,16 @@ flutter pub run build_runner build
 ## Current data sources
 
 - Authentication and family membership use the Veya REST API.
-- Tasks are offline-first and currently live in Drift. The repository boundary
-  is ready to receive a remote sync implementation when the target endpoints
-  become available.
+- Tasks, comments, reminders, attachment queue metadata, named shopping lists,
+  checklist items, and activity events are offline-first and live in Drift.
+  Their repository boundaries are ready for remote sync implementations when
+  the target endpoints become available.
 - Pull-to-refresh updates the family cache; task mutations update the reactive
   local list immediately.
+- Picked attachment files are copied into application support storage and kept
+  with a client-only state of `QUEUED`, `UPLOADING`, `UPLOADED`, or `FAILED`.
+  The remote uploader is deliberately deferred until the backend multipart
+  endpoint is available.
 
 ## Firebase
 

@@ -37,6 +37,16 @@ final class HomeScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            tooltip: 'Покупки',
+            onPressed: () => context.push(AppRoutes.shopping),
+            icon: const Icon(Icons.shopping_basket_outlined),
+          ),
+          IconButton(
+            tooltip: 'Активность',
+            onPressed: () => context.push(AppRoutes.activity),
+            icon: const Icon(Icons.history),
+          ),
+          IconButton(
             tooltip: 'Семья',
             onPressed: () => context.push(AppRoutes.family),
             icon: const Icon(Icons.group_outlined),
@@ -200,7 +210,7 @@ final class _TaskCard extends ConsumerWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.taskEdit(task.id)),
+        onTap: () => context.push(AppRoutes.task(task.id)),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: ListTile(

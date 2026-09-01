@@ -1,18 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
+import '../../../core/providers/id_provider.dart';
+import '../../activity/presentation/activity_providers.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../household/presentation/family_providers.dart';
 import '../data/local_task_repository.dart';
 import '../domain/task_models.dart';
 import '../domain/task_repository.dart';
 
-final uuidProvider = Provider<Uuid>((ref) => const Uuid());
-
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   return LocalTaskRepository(
     ref.watch(databaseProvider),
     ref.watch(uuidProvider),
+    ref.watch(activityRepositoryProvider),
+    ref.watch(authSessionControllerProvider).user?.id,
   );
 });
 
